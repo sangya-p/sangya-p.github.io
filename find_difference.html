@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spot the Difference!</title>
+<style>
+  :root {
+    --ink: #27365d;
+    --muted: #687895;
+    --purple: #7458e8;
+    --coral: #ff806c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 22px 14px 34px;
+    overflow-x: hidden;
+    color: var(--ink);
+    font-family: "Trebuchet MS", "Arial Rounded MT Bold", Arial, sans-serif;
+    background:
+      radial-gradient(circle at 6% 16%, #fff 0 3px, transparent 4px),
+      radial-gradient(circle at 94% 13%, #fff 0 4px, transparent 5px),
+      radial-gradient(ellipse at 8% 12%, #fff0c6 0 7%, transparent 7.2%),
+      radial-gradient(ellipse at 96% 22%, #e9e4ff 0 8%, transparent 8.2%),
+      linear-gradient(145deg, #f4f1ff, #fff8ed 62%, #e9fbf3);
+  }
+  button { font: inherit; }
+  .app { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 18px; }
+  .eyebrow {
+    display: inline-block;
+    padding: 6px 13px;
+    border-radius: 99px;
+    color: #765dd6;
+    background: #fff;
+    box-shadow: 0 3px 10px #6550aa16;
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 10px 0 4px;
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    line-height: 1.05;
+    letter-spacing: -.04em;
+  }
+  h1 span { color: var(--coral); }
+  .intro { margin: 8px 0 0; color: var(--muted); }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 13px;
+    border: 1px solid white;
+    border-radius: 20px;
+    background: #ffffffd4;
+    box-shadow: 0 8px 22px #45427512;
+    backdrop-filter: blur(8px);
+  }
+  .levels { display: flex; flex-wrap: wrap; gap: 7px; }
+  .level, .sound-btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 9px 12px;
+    color: #586782;
+    background: #f2f3fa;
+    font-weight: 900;
+    cursor: pointer;
+    transition: .18s ease;
+  }
+  .level:hover, .sound-btn:hover, .action:hover { transform: translateY(-2px); }
+  .level.active { color: white; background: var(--purple); box-shadow: 0 4px 0 #5942c3; }
+  .sound-btn { color: #387d69; background: #e5f8f1; }
+  .round-info { display: flex; align-items: center; gap: 9px; }
+  .timer, .found {
+    min-width: 82px;
+    padding: 9px 11px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer { color: #b24b3c; background: #fff0eb; font-size: 1.06rem; }
+  .timer.low { color: white; background: #f05c54; animation: wobble .4s infinite alternate; }
+  .found { color: #267f69; background: #e4f8f1; }
+  @keyframes wobble { to { transform: rotate(2deg) scale(1.04); } }
+  .progress-track {
+    height: 8px;
+    overflow: hidden;
+    margin: 0 5px 12px;
+    border-radius: 10px;
+    background: #e9e6f4;
+  }
+  .progress-fill {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #49c79f, #98d96b);
+    transition: width .4s linear;
+  }
+  .instruction {
+    min-height: 28px;
+    margin: 5px 0 12px;
+    color: #586782;
+    text-align: center;
+    font-weight: 800;
+  }
+  .instruction strong { color: var(--purple); }
+  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .board {
+    padding: 10px;
+    border: 3px solid white;
+    border-radius: 22px;
+    background: white;
+    box-shadow: 0 10px 26px #45427518;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .board:hover { transform: translateY(-2px); box-shadow: 0 14px 30px #45427520; }
+  .board-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 3px 7px;
+    font-size: .9rem;
+    font-weight: 900;
+  }
+  .board-label span:last-child { color: #9ba4b8; font-size: .74rem; }
+  .picture { display: block; width: 100%; height: auto; border-radius: 14px; }
+  .hotspot { cursor: crosshair; outline: none; }
+  .hit { fill: transparent; stroke: transparent; stroke-width: 4; transition: .15s ease; }
+  .hotspot:hover .hit, .hotspot:focus .hit {
+    fill: #ffffff30; stroke: white; stroke-dasharray: 5 4;
+  }
+  .hotspot.found .hit { fill: #49d2a45c; stroke: #19a97e; stroke-dasharray: none; }
+  .hotspot.wrong .hit { fill: #ff81704c; stroke: #ff6e5d; }
+  .hotspot.hinted .hit {
+    fill: #ffe45e70; stroke: #ffbc27; stroke-dasharray: 5 4;
+    animation: hint .65s ease-in-out infinite alternate;
+  }
+  @keyframes hint { to { transform: scale(1.18); transform-origin: center; } }
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin: 15px 0 8px;
+  }
+  .action {
+    border: 0;
+    border-radius: 14px;
+    padding: 10px 15px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: .15s ease;
+  }
+  .action:disabled { opacity: .45; cursor: default; transform: none; }
+  .hint-btn { color: #875514; background: #ffedb6; box-shadow: 0 4px 0 #f2d77e; }
+  .new-btn { color: white; background: var(--coral); box-shadow: 0 4px 0 #e26154; }
+  .nav-btn { color: #525d84; background: white; box-shadow: 0 4px 0 #dfdcee; }
+  .continue-btn { display: none; color: white; background: #36b991; box-shadow: 0 4px 0 #218d70; }
+  .hint-count { margin-left: 3px; opacity: .8; }
+  .message { min-height: 30px; margin: 9px 0; color: #596783; text-align: center; font-weight: 900; }
+  .message.win { color: #168668; font-size: 1.1rem; }
+  .message.lose { color: #c65348; }
+  .tiny-note { text-align: center; color: #909ab0; font-size: .78rem; }
+  .character { transform-box: fill-box; transform-origin: center bottom; }
+  .character.cheer { animation: cheer .32s ease-in-out 3 alternate; }
+  .character.sad { animation: sad .18s ease-in-out 3 alternate; }
+  @keyframes cheer { to { transform: translateY(-7px) rotate(-5deg); } }
+  @keyframes sad { to { transform: rotate(4deg); } }
+  .sparkle { animation: twinkle 1s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+  @keyframes twinkle { to { opacity: .35; transform: scale(.75) rotate(20deg); } }
+  .flower-rain {
+    position: fixed;
+    z-index: 10;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .petal {
+    position: absolute;
+    top: -50px;
+    font-size: var(--size);
+    animation: fall var(--duration) linear var(--delay) forwards;
+    filter: drop-shadow(0 3px 3px #5d486622);
+  }
+  @keyframes fall {
+    0% { transform: translate3d(0,-5vh,0) rotate(0); opacity: 0; }
+    8% { opacity: 1; }
+    100% { transform: translate3d(var(--drift),110vh,0) rotate(700deg); opacity: .9; }
+  }
+  @media (max-width: 720px) {
+    body { padding: 16px 8px 26px; }
+    .toolbar { align-items: stretch; flex-direction: column; }
+    .levels { justify-content: center; }
+    .round-info { justify-content: center; }
+    .boards { gap: 7px; }
+    .board { padding: 6px; border-width: 2px; border-radius: 15px; }
+    .board-label { font-size: .73rem; }
+    .board-label span:last-child { font-size: .62rem; }
+    .controls { gap: 8px; }
+    .action { padding: 9px 11px; font-size: .9rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="eyebrow">🌈 A picture puzzle</div>
+    <h1>Spot the <span>Difference!</span></h1>
+    <p class="intro">Look carefully, find the changes, and help our garden friends!</p>
+  </header>
+
+  <section class="toolbar" aria-label="Game controls">
+    <div class="levels" role="group" aria-label="Choose difficulty">
+      <button class="level active" data-level="easy">🌱 Easy</button>
+      <button class="level" data-level="medium">🌼 Medium</button>
+      <button class="level" data-level="hard">🚀 Hard</button>
+      <button class="sound-btn" id="soundBtn" aria-pressed="true">🔊 Sounds: On</button>
+    </div>
+    <div class="round-info">
+      <div class="timer" id="timer" aria-live="polite">⏱ 30</div>
+      <div class="found" id="found">⭐ 0 / 3</div>
+    </div>
+  </section>
+
+  <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress"></div></div>
+  <p class="instruction" id="instruction">Tap a spot in either picture when you find a difference!</p>
+
+  <main class="boards" aria-label="Two pictures to compare">
+    <section class="board">
+      <div class="board-label"><span>🖼️ Picture A</span><span>Look closely!</span></div>
+      <div id="pictureA"></div>
+    </section>
+    <section class="board">
+      <div class="board-label"><span>🖼️ Picture B</span><span>What changed?</span></div>
+      <div id="pictureB"></div>
+    </section>
+  </main>
+
+  <div class="controls">
+    <button class="action nav-btn" id="prevBtn">⬅ Previous</button>
+    <button class="action hint-btn" id="hintBtn">💡 Hint <span class="hint-count" id="hintCount">3 left</span></button>
+    <button class="action new-btn" id="retryBtn">🔄 Try again</button>
+    <button class="action nav-btn" id="nextBtn">Next ➡</button>
+    <button class="action continue-btn" id="continueBtn"></button>
+  </div>
+  <p class="message" id="message" aria-live="polite"></p>
+  <p class="tiny-note">10 puzzles in each level · Find every difference before the 30 seconds are up!</p>
+</div>
+<div class="flower-rain" id="flowerRain" aria-hidden="true"></div>
+
+<script>
+(() => {
+  const spots = {
+    sun:       { x: 449, y: 45, label: "the sunny sky" },
+    cloud:     { x: 75,  y: 63, label: "the cloud" },
+    window:    { x: 238, y: 144, label: "the cottage window" },
+    bird:      { x: 127, y: 109, label: "the little bird" },
+    kite:      { x: 401, y: 96, label: "the kite" },
+    tree:      { x: 354, y: 135, label: "the tree" },
+    butterfly: { x: 169, y: 173, label: "the butterfly" },
+    flower:    { x: 65,  y: 249, label: "the flower" },
+    ball:      { x: 293, y: 264, label: "the ball" },
+    duck:      { x: 445, y: 264, label: "the duck" }
+  };
+
+  const allSpots = Object.keys(spots);
+  const levels = {
+    easy: { label: "Easy", count: 3 },
+    medium: { label: "Medium", count: 5 },
+    hard: { label: "Hard", count: 7 }
+  };
+  const palettes = [
+    { sky1: "#75d8f5", sky2: "#e4fbfa", grass: "#6bd18b", leaves: "#55bd79", shirt: "#ff7192" },
+    { sky1: "#91d9ff", sky2: "#fff3d3", grass: "#85d876", leaves: "#52b989", shirt: "#ff9d45" },
+    { sky1: "#9bc8ff", sky2: "#f8eaff", grass: "#72d195", leaves: "#5bb69b", shirt: "#9677ed" },
+    { sky1: "#6ddbd5", sky2: "#efffe4", grass: "#84d879", leaves: "#54b979", shirt: "#f36e73" },
+    { sky1: "#85c9f3", sky2: "#fff3dc", grass: "#74d68d", leaves: "#5abf82", shirt: "#41aee0" }
+  ];
+
+  let level = "easy";
+  let round = 1;
+  let differences = [];
+  let found = new Set();
+  let hints = 3;
+  let timerId = null;
+  let transitionId = null;
+  let hintTimeout = null;
+  let running = true;
+  let soundOn = true;
+  let audio = null;
+
+  const $ = id => document.getElementById(id);
+
+  function audioContext() {
+    if (!audio) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) audio = new AudioCtx();
+    }
+    if (audio && audio.state === "suspended") audio.resume();
+    return audio;
+  }
+
+  function note(freq, delay = 0, duration = .2, wave = "sine", volume = .065) {
+    if (!soundOn) return;
+    const ctx = audioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = ctx.currentTime + delay;
+    osc.type = wave;
+    osc.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(.001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + .025);
+    gain.gain.exponentialRampToValueAtTime(.001, start + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + .03);
+  }
+
+  function playSound(kind) {
+    if (!soundOn) return;
+    if (kind === "correct") {
+      note(660, 0, .13); note(880, .1, .2);
+    } else if (kind === "wrong") {
+      note(240, 0, .17, "triangle", .045);
+      note(190, .09, .2, "triangle", .045);
+    } else if (kind === "hint") {
+      note(740, 0, .14); note(988, .12, .2);
+    } else if (kind === "win") {
+      [523, 659, 784, 1047, 784, 1047].forEach((n, i) => note(n, i * .12, .32, "sine", .07));
+      [523, 659, 784].forEach((n, i) => note(n, .03 + i * .08, .55, "triangle", .025));
+    } else if (kind === "time") {
+      note(440, 0, .18, "triangle", .06);
+      note(320, .14, .22, "triangle", .055);
+      note(210, .3, .36, "triangle", .05);
+    } else if (kind === "on") {
+      note(660, 0, .12); note(880, .1, .17);
+    }
+  }
+
+  function getDifferences() {
+    const count = levels[level].count;
+    const shift = (round - 1) * 3 + (level === "medium" ? 2 : level === "hard" ? 4 : 0);
+    return Array.from({ length: count }, (_, i) => allSpots[(shift + i * 3) % allSpots.length]);
+  }
+
+  function scene(side) {
+    const isB = side === "B";
+    const has = id => isB && differences.includes(id);
+    const palette = palettes[(round - 1) % palettes.length];
+    const apples = has("tree")
+      ? '<circle cx="338" cy="136" r="7" fill="#ff635c"/><circle cx="365" cy="151" r="7" fill="#ff635c"/>'
+      : '<circle cx="338" cy="136" r="7" fill="#ff635c"/><circle cx="365" cy="151" r="7" fill="#ff635c"/><circle cx="352" cy="127" r="7" fill="#ff635c"/>';
+
+    return `
+    <svg class="picture" viewBox="0 0 520 320" role="img" aria-label="A bright storybook garden with a cottage, a kid, a puppy, and garden friends">
+      <defs>
+        <linearGradient id="sky${side}" x2="0" y2="1"><stop stop-color="${palette.sky1}"/><stop offset="1" stop-color="${palette.sky2}"/></linearGradient>
+        <linearGradient id="grass${side}" x2="0" y2="1"><stop stop-color="#a4e885"/><stop offset="1" stop-color="${palette.grass}"/></linearGradient>
+        <linearGradient id="roof${side}" x2="0" y2="1"><stop stop-color="#ff9a7c"/><stop offset="1" stop-color="#e55e69"/></linearGradient>
+        <linearGradient id="pond${side}" x2="0" y2="1"><stop stop-color="#74d8eb"/><stop offset="1" stop-color="#45b9dc"/></linearGradient>
+        <filter id="soft${side}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+      </defs>
+      <rect width="520" height="320" fill="url(#sky${side})"/>
+      <circle cx="449" cy="45" r="34" fill="#fff5b0" opacity=".42" filter="url(#soft${side})"/>
+      ${has("sun") ? "" : '<g stroke="#ffca52" stroke-width="4" stroke-linecap="round"><path d="M449 2v-9M449 98v-9M406 45h-9M501 45h-9M419 15l-7-7M486 82l-7-7M479 15l7-7M412 82l7-7"/></g>'}
+      <circle cx="449" cy="45" r="25" fill="#ffd85e"/>
+      <circle cx="449" cy="45" r="19" fill="#ffe98a"/>
+      <g transform="translate(449 45)" fill="none" stroke="#d79538" stroke-width="1.8" stroke-linecap="round">
+        <path d="M-7-2q2-2 4 0M3-2q2-2 4 0"/><path d="M-3 5q3 3 7 0"/>
+      </g>
+      <path d="M312 92a83 83 0 0 1 126 0" fill="none" stroke="#ff8f8c" stroke-width="9" opacity=".7"/>
+      <path d="M321 92a72 72 0 0 1 108 0" fill="none" stroke="#ffd768" stroke-width="8" opacity=".8"/>
+      <path d="M331 92a60 60 0 0 1 87 0" fill="none" stroke="#78d9a0" stroke-width="8" opacity=".8"/>
+      <path d="M342 92a46 46 0 0 1 65 0" fill="none" stroke="#8ab9ff" stroke-width="8" opacity=".8"/>
+      <g fill="#fff">
+        <ellipse cx="64" cy="65" rx="28" ry="16"/><ellipse cx="82" cy="55" rx="21" ry="20"/><ellipse cx="101" cy="66" rx="27" ry="15"/>
+        ${has("cloud") ? '<circle cx="58" cy="54" r="12"/>' : ""}
+      </g>
+      <circle class="sparkle" cx="157" cy="57" r="3" fill="#fff"/>
+      <path d="M0 190Q68 125 145 171T295 161T435 169T560 151V320H0Z" fill="#b9e9a6"/>
+      <path d="M0 222Q72 176 164 213T332 207T520 196V320H0Z" fill="url(#grass${side})"/>
+      <path d="M0 285Q100 251 205 281T390 271T560 286V320H0Z" fill="#60c985"/>
+      <g opacity=".35" fill="#fff">
+        <ellipse cx="192" cy="232" rx="30" ry="4"/><ellipse cx="361" cy="226" rx="35" ry="4"/>
+      </g>
+
+      <!-- Cozy little cottage -->
+      <path d="M187 132L247 88l68 44-10 12-57-37-53 37Z" fill="#d95861"/>
+      <path d="M195 132L247 95l61 37" fill="none" stroke="#ffb19b" stroke-width="5" stroke-linecap="round"/>
+      <rect x="200" y="131" width="97" height="88" rx="5" fill="#ffb17f" stroke="#e48166" stroke-width="3"/>
+      <path d="M200 146h97" stroke="#ffd7a0" stroke-width="4"/>
+      <rect x="222" y="145" width="34" height="31" rx="3" fill="${has("window") ? "#ffe173" : "#80d8ed"}" stroke="#fff1d4" stroke-width="5"/>
+      <path d="M239 147v27M224 160h30" stroke="#fff1d4" stroke-width="3"/>
+      ${has("window") ? '<path d="M218 143l-7 4v30l7 3M260 143l7 4v30l-7 3" fill="#7acb87" stroke="#fff1d4" stroke-width="3"/>' : ""}
+      <rect x="269" y="170" width="19" height="49" rx="8" fill="#a7674c"/>
+      <circle cx="283" cy="196" r="2.5" fill="#ffe5a4"/>
+      <path d="M190 218h120" stroke="#f6d9a7" stroke-width="7" stroke-linecap="round"/>
+      <rect x="215" y="116" width="13" height="19" rx="3" fill="#bd7257"/>
+      <path d="M216 116v-5q5-8 11 0v5" fill="#d98d65"/>
+
+      <!-- Flowering tree -->
+      <path d="M349 164v61" stroke="#986044" stroke-width="15" stroke-linecap="round"/>
+      <path d="M350 187l-18-16M350 183l17-22" stroke="#986044" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="350" cy="130" r="33" fill="${palette.leaves}"/>
+      <circle cx="328" cy="145" r="22" fill="#69cb7c"/>
+      <circle cx="371" cy="145" r="22" fill="#78d77f"/>
+      <circle cx="350" cy="111" r="23" fill="#70ce78"/>
+      ${apples}
+      <circle cx="329" cy="124" r="4" fill="#a9e787" opacity=".8"/>
+      <circle cx="367" cy="120" r="4" fill="#a9e787" opacity=".8"/>
+
+      <!-- Little bird -->
+      <g transform="translate(128 106)">
+        <path d="M-13 3q2-13 16-9 11 3 8 13-11 10-24-4Z" fill="#ff9862"/>
+        <circle cx="9" cy="-2" r="6" fill="#ffad68"/>
+        <path d="M14-2l10 3-10 3" fill="#ffd353"/>
+        <circle cx="10" cy="-4" r="1.5" fill="#34405b"/>
+        ${has("bird") ? '<path d="M-4 4q5-9 10 0" fill="none" stroke="#fff0c6" stroke-width="3"/>' : '<path d="M-6 8v5M3 8v5" stroke="#bd604d" stroke-width="2.5"/>'}
+      </g>
+
+      <!-- Colorful kite -->
+      <g transform="translate(401 94)">
+        <path d="M0-21L20 0 0 21-20 0Z" fill="#a78af4" stroke="#7056cc" stroke-width="2.5"/>
+        <path d="M-12-8L12 8M12-8L-12 8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+        <path d="M0 21q11 8 1 16t1 17" fill="none" stroke="#7056cc" stroke-width="2.5"/>
+        ${has("kite") ? '<path d="M1 31l7 5-7 5-7-5z" fill="#ff806c"/>' : '<path d="M1 45l7 5-7 5-7-5z" fill="#ff806c"/>'}
+      </g>
+
+      <!-- Butterfly -->
+      <g transform="translate(169 169)">
+        <path d="M0 0C-20-20-29-4-10 4-25 18-10 26 0 7 10 26 25 18 10 4 29-4 20-20 0 0Z" fill="#ff8fb4" stroke="#df6490" stroke-width="2"/>
+        <path d="M0 1v15m0-15q-8-10-10-12m10 12q8-10 10-12" fill="none" stroke="#7556c8" stroke-width="2"/>
+        <circle cx="-9" cy="-7" r="3" fill="#fff"/><circle cx="8" cy="10" r="2.5" fill="#fff6a5"/>
+        ${has("butterfly") ? '<circle cx="9" cy="-8" r="3" fill="#fff"/>' : ""}
+      </g>
+
+      <!-- Pond and duck -->
+      <ellipse cx="443" cy="276" rx="61" ry="24" fill="url(#pond${side})"/>
+      <path d="M398 276q23-12 45 0m16 5q17-8 30 0" fill="none" stroke="#c8f5ff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+      <g transform="translate(445 264)">
+        <ellipse cx="0" cy="8" rx="20" ry="13" fill="#fff6d6"/>
+        <circle cx="11" cy="-3" r="10" fill="#fff6d6"/>
+        <circle cx="14" cy="-5" r="1.8" fill="#37415e"/>
+        <path d="${has("duck") ? "M19-2l12 4-12 4" : "M19-2l8 3-8 3"}" fill="#f5a14f"/>
+        <path d="M-9 4q-11-12-15-5 2 12 16 13" fill="#f4d361"/>
+        <path d="M-5 19l-7 5m15-5 7 5" stroke="#f3a347" stroke-width="3" stroke-linecap="round"/>
+      </g>
+
+      <!-- Garden flowers -->
+      <g transform="translate(65 246)">
+        <path d="M0 20V0" stroke="#399b62" stroke-width="4" stroke-linecap="round"/>
+        <path d="M0 11q-13-10-16-1 8 7 16 5M0 14q13-11 17-2-8 8-17 7" fill="#51b978"/>
+        <g fill="${has("flower") ? "#ff705f" : "#ffd253"}">
+          <circle cx="0" cy="-10" r="7"/><circle cx="9" cy="-4" r="7"/><circle cx="6" cy="6" r="7"/>
+          <circle cx="-6" cy="6" r="7"/><circle cx="-9" cy="-4" r="7"/>
+        </g>
+        <circle cy="0" r="4.5" fill="#9564ce"/>
+      </g>
+
+      <!-- Happy kid -->
+      <g class="character" transform="translate(126 230)">
+        <ellipse cy="37" rx="19" ry="5" fill="#329b6d" opacity=".3"/>
+        <path d="M-10 18l-5 18m15-18 7 18" stroke="#5e4b7d" stroke-width="7" stroke-linecap="round"/>
+        <path d="M-19 36h8m16 0h8" stroke="#ffb46c" stroke-width="6" stroke-linecap="round"/>
+        <path d="M-14 2q14-9 28 0l-2 20h-24Z" fill="${palette.shirt}" stroke="#fff4dc" stroke-width="1.5"/>
+        <path d="M-14 6l-10 8m38-8 10-12" stroke="#f2b27b" stroke-width="6" stroke-linecap="round"/>
+        <circle cy="-11" r="15" fill="#f5bd91"/>
+        <path d="M-15-13q0-17 16-17 14 1 15 14l-5 2-5-7q-9 8-21 7Z" fill="#5c3f58"/>
+        <circle cx="-5" cy="-11" r="1.6" fill="#3c3550"/><circle cx="6" cy="-11" r="1.6" fill="#3c3550"/>
+        <path d="M-4-5q4 5 8 0" fill="none" stroke="#b5535a" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="-9" cy="-5" r="2.5" fill="#ee8d87" opacity=".7"/><circle cx="10" cy="-5" r="2.5" fill="#ee8d87" opacity=".7"/>
+      </g>
+
+      <!-- Puppy friend -->
+      <g transform="translate(320 246)">
+        <ellipse cx="0" cy="25" rx="24" ry="5" fill="#329b6d" opacity=".3"/>
+        <path d="M-15 8q-4-18 11-20 23-3 25 17l-4 16h-30Z" fill="#d99a66"/>
+        <path d="M-9-6q-17-19-21-4-1 14 12 15M10-7q18-17 21-1 1 13-12 15" fill="#9a5f50"/>
+        <ellipse cx="1" cy="3" rx="15" ry="12" fill="#ffe0ae"/>
+        <circle cx="-4" cy="0" r="2" fill="#483952"/><circle cx="7" cy="0" r="2" fill="#483952"/>
+        <ellipse cx="2" cy="6" rx="4" ry="3" fill="#49374b"/>
+        <path d="M-2 11q4 4 8 0" fill="none" stroke="#a65853" stroke-width="1.7"/>
+        <path d="M-17 17v10m27-10v10" stroke="#9a5f50" stroke-width="6" stroke-linecap="round"/>
+        <path d="M17 10q14-4 13-13" fill="none" stroke="#9a5f50" stroke-width="5" stroke-linecap="round"/>
+        <path d="M-14 12q15 8 30 0l-2 6q-13 8-26 0Z" fill="#ffdc55"/>
+      </g>
+
+      <!-- Bright ball -->
+      <ellipse cx="293" cy="278" rx="21" ry="7" fill="#4caa88" opacity=".3"/>
+      <circle cx="293" cy="264" r="17" fill="#ff806c" stroke="#de5c52" stroke-width="2"/>
+      <path d="${has("ball") ? "M278 258Q293 267 308 258" : "M281 251Q293 264 305 277"}" fill="none" stroke="#fff3d8" stroke-width="4"/>
+      <path d="M276 266q17-8 34 4" fill="none" stroke="#fff3d8" stroke-width="2" opacity=".8"/>
+
+      <g class="hotspots" aria-label="Tap a spot to check for a difference">
+        ${Object.entries(spots).map(([id, p]) => `
+          <g class="hotspot" data-id="${id}" role="button" tabindex="0" aria-label="Check ${p.label}">
+            <circle class="hit" cx="${p.x}" cy="${p.y}" r="25"/>
+          </g>`).join("")}
+      </g>
+    </svg>`;
+  }
+
+  function render() {
+    $("pictureA").innerHTML = scene("A");
+    $("pictureB").innerHTML = scene("B");
+    document.querySelectorAll(".hotspot").forEach(el => {
+      const id = el.dataset.id;
+      el.addEventListener("click", () => guess(id));
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          guess(id);
+        }
+      });
+      if (found.has(id)) el.classList.add("found");
+    });
+  }
+
+  function updateHud() {
+    $("found").textContent = `⭐ ${found.size} / ${differences.length}`;
+    $("instruction").innerHTML = `Puzzle <strong>${round} of 10</strong> · Find <strong>${differences.length} differences</strong>!`;
+    $("prevBtn").disabled = round === 1;
+    $("nextBtn").disabled = round === 10;
+  }
+
+  function startRound(whichLevel = level, whichRound = round) {
+    clearInterval(timerId);
+    clearTimeout(transitionId);
+    clearTimeout(hintTimeout);
+    level = whichLevel;
+    round = Math.max(1, Math.min(10, whichRound));
+    differences = getDifferences();
+    found = new Set();
+    hints = 3;
+    running = true;
+
+    document.querySelectorAll(".level").forEach(btn =>
+      btn.classList.toggle("active", btn.dataset.level === level)
+    );
+    $("hintCount").textContent = "3 left";
+    $("hintBtn").disabled = false;
+    $("timer").textContent = "⏱ 30";
+    $("timer").classList.remove("low");
+    $("progress").style.width = "100%";
+    $("message").className = "message";
+    $("message").textContent = "";
+    $("continueBtn").style.display = "none";
+    updateHud();
+    render();
+
+    const deadline = Date.now() + 30000;
+    timerId = setInterval(() => {
+      const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      $("timer").textContent = `⏱ ${seconds}`;
+      $("timer").classList.toggle("low", seconds <= 8);
+      $("progress").style.width = `${(seconds / 30) * 100}%`;
+      if (seconds <= 0) finish(false);
+    }, 200);
+  }
+
+  function animateCharacter(className) {
+    document.querySelectorAll(".character").forEach(el => {
+      el.classList.remove("cheer", "sad");
+      void el.getBoundingClientRect();
+      el.classList.add(className);
+    });
+  }
+
+  function flowerShower() {
+    const box = $("flowerRain");
+    box.innerHTML = "";
+    const flowers = ["🌸", "🌼", "🌺", "🌻", "💮"];
+    for (let i = 0; i < 34; i++) {
+      const petal = document.createElement("span");
+      petal.className = "petal";
+      petal.textContent = flowers[Math.floor(Math.random() * flowers.length)];
+      petal.style.left = `${Math.random() * 100}%`;
+      petal.style.setProperty("--delay", `${Math.random() * .9}s`);
+      petal.style.setProperty("--duration", `${2.4 + Math.random() * 1.8}s`);
+      petal.style.setProperty("--size", `${22 + Math.random() * 18}px`);
+      petal.style.setProperty("--drift", `${Math.random() * 140 - 70}px`);
+      box.appendChild(petal);
+    }
+    setTimeout(() => { box.innerHTML = ""; }, 5200);
+  }
+
+  function guess(id) {
+    if (!running || found.has(id)) return;
+    if (differences.includes(id)) {
+      found.add(id);
+      playSound("correct");
+      animateCharacter("cheer");
+      document.querySelectorAll(`.hotspot[data-id="${id}"]`).forEach(el => el.classList.add("found"));
+      updateHud();
+      $("message").textContent = `Great spotting! You found ${spots[id].label}! 🎉`;
+      if (found.size === differences.length) finish(true);
+    } else {
+      playSound("wrong");
+      $("message").textContent = "Oops-a-daisy! Not that one. Keep looking, Puzzle Hero! 🐶";
+      document.querySelectorAll(`.hotspot[data-id="${id}"]`).forEach(el => {
+        el.classList.add("wrong");
+        setTimeout(() => el.classList.remove("wrong"), 600);
+      });
+    }
+  }
+
+  function finish(won) {
+    if (!running) return;
+    running = false;
+    clearInterval(timerId);
+    $("hintBtn").disabled = true;
+
+    if (won) {
+      playSound("win");
+      flowerShower();
+      animateCharacter("cheer");
+      $("message").className = "message win";
+      if (round < 10) {
+        $("message").textContent = "You found them all! Amazing eyes! 🌸";
+        transitionId = setTimeout(() => startRound(level, round + 1), 2200);
+      } else {
+        $("message").textContent = `Hooray! You finished all 10 ${levels[level].label} puzzles! 🏆`;
+        const nextLevel = level === "easy" ? "medium" : level === "medium" ? "hard" : null;
+        if (nextLevel) {
+          $("continueBtn").textContent = `Continue to ${levels[nextLevel].label} ➜`;
+          $("continueBtn").style.display = "inline-block";
+          $("continueBtn").onclick = () => startRound(nextLevel, 1);
+        } else {
+          $("instruction").textContent = "You are a Spot the Difference champion! Pick a level to play again.";
+        }
+      }
+    } else {
+      playSound("time");
+      animateCharacter("sad");
+      $("message").className = "message lose";
+      $("message").textContent = "Uh-oh! Time ran out! Have another go—you can do it! 🐶";
+    }
+  }
+
+  $("hintBtn").addEventListener("click", () => {
+    if (!running || hints <= 0) return;
+    const remaining = differences.filter(id => !found.has(id));
+    if (!remaining.length) return;
+    playSound("hint");
+    const id = remaining[Math.floor(Math.random() * remaining.length)];
+    hints--;
+    $("hintCount").textContent = `${hints} left`;
+    $("message").textContent = `Here's a little clue: look near ${spots[id].label}! 💡`;
+    document.querySelectorAll(`.hotspot[data-id="${id}"]`).forEach(el => el.classList.add("hinted"));
+    clearTimeout(hintTimeout);
+    hintTimeout = setTimeout(() => {
+      document.querySelectorAll(".hotspot.hinted").forEach(el => el.classList.remove("hinted"));
+    }, 3000);
+    if (hints === 0) $("hintBtn").disabled = true;
+  });
+
+  $("soundBtn").addEventListener("click", () => {
+    soundOn = !soundOn;
+    $("soundBtn").textContent = soundOn ? "🔊 Sounds: On" : "🔇 Sounds: Off";
+    $("soundBtn").setAttribute("aria-pressed", String(soundOn));
+    if (soundOn) playSound("on");
+  });
+  $("retryBtn").addEventListener("click", () => startRound(level, round));
+  $("prevBtn").addEventListener("click", () => startRound(level, round - 1));
+  $("nextBtn").addEventListener("click", () => startRound(level, round + 1));
+  document.querySelectorAll(".level").forEach(btn => {
+    btn.addEventListener("click", () => startRound(btn.dataset.level, 1));
+  });
+
+  startRound("easy", 1);
+})();
+</script>
+</body>
+</html>
