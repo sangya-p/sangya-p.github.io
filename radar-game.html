@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tactical Tracking Radar</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #1a1a1a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    user-select: none;
+  }
+  #radarField {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #1a1a1a;
+  }
+  #hud {
+    position: fixed;
+    top: 16px; left: 16px;
+    color: #00ff41;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px #00ff41;
+    z-index: 20;
+  }
+  #hud .label { opacity: 0.7; }
+  #timer {
+    position: fixed;
+    top: 16px; right: 16px;
+    color: #00ff41;
+    font-size: 22px;
+    font-weight: bold;
+    text-shadow: 0 0 8px #00ff41;
+    z-index: 20;
+  }
+  #player {
+    position: absolute;
+    font-size: 40px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 10px #00ff41) drop-shadow(0 0 18px #00ff41);
+    z-index: 10;
+    transition: none;
+  }
+  #dino {
+    position: absolute;
+    font-size: 44px;
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    filter: grayscale(1) brightness(0.75) sepia(1) hue-rotate(-50deg) saturate(8)
+            drop-shadow(0 0 10px #ff0000) drop-shadow(0 0 18px #ff2200);
+    z-index: 10;
+    transition: top 0.4s linear, left 0.4s linear;
+  }
+  #controls {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    display: grid;
+    grid-template-columns: 64px 64px 64px;
+    grid-template-rows: 64px 64px 64px;
+    gap: 6px;
+    z-index: 20;
+  }
+  .ctrl-btn {
+    background: rgba(0, 40, 10, 0.6);
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    font-size: 28px;
+    font-weight: bold;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 0 8px #00ff41;
+    box-shadow: 0 0 12px rgba(0,255,65,0.5);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ctrl-btn:active {
+    background: rgba(0, 255, 65, 0.35);
+    transform: scale(0.94);
+  }
+  #up    { grid-column: 2; grid-row: 1; }
+  #left  { grid-column: 1; grid-row: 2; }
+  #right { grid-column: 3; grid-row: 2; }
+  #down  { grid-column: 2; grid-row: 3; }
+
+  #flashOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #ff0000;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 40;
+  }
+  #flashOverlay.gameover {
+    animation: flashRed 0.4s steps(1) infinite;
+  }
+  @keyframes flashRed {
+    0%, 49% { opacity: 0.75; }
+    50%, 100% { opacity: 0.15; }
+  }
+
+  #bannerWrap {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    flex-direction: column;
+    text-align: center;
+  }
+  #bannerWrap.show { display: flex; }
+  .banner-text {
+    font-size: 48px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 20px 30px;
+    border-radius: 10px;
+  }
+  .banner-gameover {
+    color: #fff;
+    background: rgba(80,0,0,0.85);
+    text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+    border: 3px solid #ff3333;
+    animation: pulseFlash 0.5s infinite alternate;
+  }
+  .banner-victory {
+    color: #001a00;
+    background: #00ff41;
+    text-shadow: 0 0 10px #ffffff;
+    border: 3px solid #ffffff;
+    animation: pulseFlashGreen 0.5s infinite alternate;
+  }
+  @keyframes pulseFlash {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0.6; transform: scale(1.05); }
+  }
+  @keyframes pulseFlashGreen {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0.75; transform: scale(1.08); }
+  }
+  #restartBtn {
+    margin-top: 24px;
+    padding: 12px 28px;
+    font-size: 18px;
+    background: transparent;
+    border: 2px solid #00ff41;
+    color: #00ff41;
+    text-shadow: 0 0 6px #00ff41;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #restartBtn:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<canvas id="radarField"></canvas>
+
+<div id="hud"><span class="label">STATUS:</span> <span id="statusText">TRACKING</span></div>
+<div id="timer">00.0s</div>
+
+<div id="player">🧍</div>
+<div id="dino">🦖</div>
+
+<div id="controls">
+  <button class="ctrl-btn" id="up">▲</button>
+  <button class="ctrl-btn" id="left">◀</button>
+  <button class="ctrl-btn" id="right">▶</button>
+  <button class="ctrl-btn" id="down">▼</button>
+</div>
+
+<div id="flashOverlay"></div>
+
+<div id="bannerWrap">
+  <div class="banner-text" id="bannerText"></div>
+  <button id="restartBtn">RESTART</button>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('radarField');
+  const ctx = canvas.getContext('2d');
+  const player = document.getElementById('player');
+  const dino = document.getElementById('dino');
+  const timerEl = document.getElementById('timer');
+  const statusText = document.getElementById('statusText');
+  const flashOverlay = document.getElementById('flashOverlay');
+  const bannerWrap = document.getElementById('bannerWrap');
+  const bannerText = document.getElementById('bannerText');
+  const restartBtn = document.getElementById('restartBtn');
+
+  let W, H;
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    drawGrid();
+  }
+
+  function drawGrid() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy);
+    ctx.strokeStyle = 'rgba(0, 255, 65, 0.35)';
+    ctx.lineWidth = 1;
+    for (let r = maxR / 6; r <= maxR; r += maxR / 6) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+    ctx.strokeStyle = 'rgba(0, 255, 65, 0.2)';
+    ctx.stroke();
+  }
+
+  let playerX, playerY, dinoX, dinoY;
+  let gameActive = true;
+  let elapsed = 0;
+  let moveTimer = null;
+  let tickTimer = null;
+  const WIN_TIME = 20;
+  const CLOSE_STEP = 15;
+  const COLLIDE_DIST = 34;
+  const PLAYER_MOVE = 22;
+
+  function initPositions() {
+    playerX = W / 2;
+    playerY = H / 2;
+    dinoX = W / 2;
+    dinoY = 40;
+  }
+
+  function render() {
+    player.style.left = playerX + 'px';
+    player.style.top = playerY + 'px';
+    dino.style.left = dinoX + 'px';
+    dino.style.top = dinoY + 'px';
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function moveDinoTowardPlayer() {
+    if (!gameActive) return;
+    const dx = playerX - dinoX;
+    const dy = playerY - dinoY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 0.001) {
+      const step = Math.min(CLOSE_STEP, dist);
+      dinoX += (dx / dist) * step;
+      dinoY += (dy / dist) * step;
+    }
+    render();
+    checkCollision();
+  }
+
+  function checkCollision() {
+    const dx = playerX - dinoX;
+    const dy = playerY - dinoY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < COLLIDE_DIST) {
+      endGame(false);
+    }
+  }
+
+  function movePlayer(dxDir, dyDir) {
+    if (!gameActive) return;
+    playerX = clamp(playerX + dxDir * PLAYER_MOVE, 30, W - 30);
+    playerY = clamp(playerY + dyDir * PLAYER_MOVE, 30, H - 30);
+    render();
+    checkCollision();
+  }
+
+  function updateTimer() {
+    if (!gameActive) return;
+    elapsed += 0.1;
+    timerEl.textContent = elapsed.toFixed(1) + 's';
+    if (elapsed >= WIN_TIME) {
+      endGame(true);
+    }
+  }
+
+  function endGame(won) {
+    if (!gameActive) return;
+    gameActive = false;
+    clearInterval(moveTimer);
+    clearInterval(tickTimer);
+    statusText.textContent = won ? 'ESCAPED' : 'CONTACT LOST';
+    if (won) {
+      bannerText.textContent = 'ESCAPE SUCCESSFUL! 🎉🏆';
+      bannerText.className = 'banner-text banner-victory';
+    } else {
+      flashOverlay.classList.add('gameover');
+      bannerText.textContent = 'GAME OVER! 🦖🔥';
+      bannerText.className = 'banner-text banner-gameover';
+    }
+    setTimeout(function() {
+      bannerWrap.classList.add('show');
+    }, won ? 0 : 500);
+  }
+
+  function startGame() {
+    gameActive = true;
+    elapsed = 0;
+    timerEl.textContent = '00.0s';
+    statusText.textContent = 'TRACKING';
+    flashOverlay.classList.remove('gameover');
+    bannerWrap.classList.remove('show');
+    initPositions();
+    render();
+    moveTimer = setInterval(moveDinoTowardPlayer, 1500);
+    tickTimer = setInterval(updateTimer, 100);
+  }
+
+  document.getElementById('up').addEventListener('click', function(){ movePlayer(0, -1); });
+  document.getElementById('down').addEventListener('click', function(){ movePlayer(0, 1); });
+  document.getElementById('left').addEventListener('click', function(){ movePlayer(-1, 0); });
+  document.getElementById('right').addEventListener('click', function(){ movePlayer(1, 0); });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowUp') movePlayer(0, -1);
+    if (e.key === 'ArrowDown') movePlayer(0, 1);
+    if (e.key === 'ArrowLeft') movePlayer(-1, 0);
+    if (e.key === 'ArrowRight') movePlayer(1, 0);
+  });
+
+  restartBtn.addEventListener('click', startGame);
+  window.addEventListener('resize', function() { resize(); render(); });
+
+  resize();
+  startGame();
+})();
+</script>
+
+</body>
+</html>
