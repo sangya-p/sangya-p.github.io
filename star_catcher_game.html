@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Star Catcher!</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    font-family: 'Baloo 2', 'Comic Sans MS', 'Trebuchet MS', 'Arial Rounded MT Bold', sans-serif;
+    touch-action: manipulation;
+  }
+  #game {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(to bottom, #6EC6FF 0%, #9FDDFF 55%, #BDEBFF 75%, #A6E6A1 76%, #7ED957 100%);
+    overflow: hidden;
+  }
+  /* clouds */
+  .cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.85);
+    border-radius: 50px;
+    filter: blur(0.5px);
+  }
+  .cloud::before, .cloud::after {
+    content: "";
+    position: absolute;
+    background: rgba(255,255,255,0.85);
+    border-radius: 50%;
+  }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 18px;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .pill {
+    background: rgba(255,255,255,0.9);
+    border-radius: 999px;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+    font-weight: 800;
+  }
+  #scoreLabel {
+    font-size: clamp(24px, 6vw, 38px);
+    color: #FF6FA5;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #timerWrap {
+    display: flex; align-items: center; gap: 8px;
+  }
+  #sunFace {
+    width: 54px; height: 54px;
+  }
+  #timerNum {
+    font-size: clamp(22px, 5.5vw, 34px);
+    color: #F08A00;
+  }
+
+  /* falling objects */
+  .faller {
+    position: absolute;
+    font-size: 3.2rem;
+    line-height: 1;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 3px rgba(0,0,0,0.18));
+    z-index: 10;
+    touch-action: manipulation;
+    will-change: transform, top;
+  }
+  .faller.pop {
+    animation: popAway 0.35s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes popAway {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    60% { transform: scale(1.5) rotate(15deg); opacity: 1; }
+    100% { transform: scale(0.2) rotate(30deg); opacity: 0; }
+  }
+  .plusOne {
+    position: absolute;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #FF6FA5;
+    pointer-events: none;
+    z-index: 15;
+    animation: floatUp 0.7s ease-out forwards;
+    text-shadow: 0 2px 0 white, 0 -1px 0 white, 2px 0 0 white, -2px 0 0 white;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-60px); opacity: 0; }
+  }
+  .spark {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 14;
+    animation: sparkOut 0.5s ease-out forwards;
+  }
+  @keyframes sparkOut {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  /* overlays */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 30;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(2px);
+    padding: 20px;
+  }
+  .hidden { display: none !important; }
+  .titleText {
+    font-size: clamp(38px, 11vw, 64px);
+    color: #FF6FA5;
+    text-shadow: 3px 3px 0 #fff, -2px -2px 0 #fff, 4px 4px 0 rgba(0,0,0,0.08);
+    margin: 0 0 8px 0;
+    font-weight: 800;
+  }
+  .subText {
+    font-size: clamp(18px, 4.5vw, 26px);
+    color: #4A3F91;
+    margin: 0 0 28px 0;
+    font-weight: 800;
+  }
+  .bigBtn {
+    font-family: inherit;
+    font-size: clamp(24px, 6vw, 34px);
+    font-weight: 800;
+    color: white;
+    background: linear-gradient(#FF8FB4, #FF6FA5);
+    border: none;
+    border-radius: 999px;
+    padding: 18px 48px;
+    box-shadow: 0 8px 0 #D14D80;
+    cursor: pointer;
+    transition: transform 0.05s;
+  }
+  .bigBtn:active {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 #D14D80;
+  }
+  .demoRow {
+    display: flex;
+    gap: 18px;
+    font-size: 2.6rem;
+    margin: 10px 0 30px 0;
+  }
+  .demoRow span { animation: bob 1.4s ease-in-out infinite; }
+  .demoRow span:nth-child(2) { animation-delay: 0.2s; }
+  .demoRow span:nth-child(3) { animation-delay: 0.4s; }
+  .demoRow span:nth-child(4) { animation-delay: 0.6s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
+  }
+  #finalScore {
+    font-size: clamp(48px, 14vw, 90px);
+    color: #FF6FA5;
+    font-weight: 800;
+    margin: 4px 0 6px 0;
+  }
+  #starRow {
+    font-size: clamp(36px, 9vw, 56px);
+    margin-bottom: 24px;
+  }
+  #starRow span { opacity: 0.25; display: inline-block; }
+  #starRow span.lit {
+    opacity: 1;
+    animation: starPop 0.5s ease-out;
+  }
+  @keyframes starPop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <div id="hud">
+    <div class="pill" id="scorePill">
+      <div id="scoreLabel">⭐ <span id="scoreNum">0</span></div>
+    </div>
+    <div class="pill" id="timerWrap">
+      <svg id="sunFace" viewBox="0 0 100 100">
+        <g id="sunRays" stroke="#FFC93D" stroke-width="8" stroke-linecap="round"></g>
+        <circle cx="50" cy="50" r="28" fill="#FFD93D" stroke="#F5A500" stroke-width="3"/>
+        <circle cx="40" cy="46" r="4" fill="#7A4B00"/>
+        <circle cx="60" cy="46" r="4" fill="#7A4B00"/>
+        <path d="M40 60 Q50 68 60 60" stroke="#7A4B00" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div id="timerNum">30</div>
+    </div>
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="overlay" id="startScreen">
+    <div class="titleText">⭐ Star Catcher! 🎈</div>
+    <div class="demoRow">
+      <span>⭐</span><span>🍓</span><span>🎈</span><span>🍇</span>
+    </div>
+    <div class="subText">Tap the stars, fruits &amp; balloons!</div>
+    <button class="bigBtn" id="startBtn">▶ PLAY</button>
+  </div>
+
+  <!-- END SCREEN -->
+  <div class="overlay hidden" id="endScreen">
+    <div class="titleText" id="endTitle">Awesome!! 🎉</div>
+    <div id="finalScore">0</div>
+    <div id="starRow">
+      <span id="s1">★</span><span id="s2">★</span><span id="s3">★</span>
+    </div>
+    <button class="bigBtn" id="againBtn">🔄 Play Again</button>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const game = document.getElementById('game');
+  const scoreNum = document.getElementById('scoreNum');
+  const timerNum = document.getElementById('timerNum');
+  const startScreen = document.getElementById('startScreen');
+  const endScreen = document.getElementById('endScreen');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const finalScore = document.getElementById('finalScore');
+  const sunRays = document.getElementById('sunRays');
+  const endTitle = document.getElementById('endTitle');
+
+  const EMOJIS = ['⭐','🍓','🎈','🍇','🍎','🍊','🍉','🎈','⭐','🍒'];
+  const GAME_LEN = 30;
+
+  let score = 0;
+  let timeLeft = GAME_LEN;
+  let running = false;
+  let spawnTimer = null;
+  let countdownTimer = null;
+  let fallers = [];
+  let rafId = null;
+
+  // draw sun rays once
+  (function drawRays() {
+    const cx = 50, cy = 50, rInner = 34, rOuter = 46;
+    let html = '';
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 / 8) * i;
+      const x1 = cx + rInner * Math.cos(a);
+      const y1 = cy + rInner * Math.sin(a);
+      const x2 = cx + rOuter * Math.cos(a);
+      const y2 = cy + rOuter * Math.sin(a);
+      html += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+    }
+    sunRays.innerHTML = html;
+  })();
+
+  // decorative clouds
+  function makeClouds() {
+    const existing = game.querySelectorAll('.cloud');
+    existing.forEach(c => c.remove());
+    const positions = [
+      {top: '8%', left: '10%', w: 90, h: 34},
+      {top: '15%', left: '65%', w: 110, h: 40},
+      {top: '4%', left: '40%', w: 70, h: 26}
+    ];
+    positions.forEach(p => {
+      const c = document.createElement('div');
+      c.className = 'cloud';
+      c.style.top = p.top;
+      c.style.left = p.left;
+      c.style.width = p.w + 'px';
+      c.style.height = p.h + 'px';
+      game.insertBefore(c, game.firstChild);
+    });
+  }
+  makeClouds();
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function spawnFaller() {
+    if (!running) return;
+    const el = document.createElement('div');
+    el.className = 'faller';
+    el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    const gw = game.clientWidth;
+    const size = rand(2.4, 3.6);
+    el.style.fontSize = size + 'rem';
+    const startX = rand(20, gw - 70);
+    el.style.left = startX + 'px';
+    el.style.top = '-80px';
+    game.appendChild(el);
+
+    const speed = rand(70, 130); // px per second
+    const wobble = rand(-30, 30);
+    const wobbleFreq = rand(0.5, 1.2);
+    const born = performance.now();
+
+    const data = { el, speed, startX, wobble, wobbleFreq, born, popped: false };
+    fallers.push(data);
+
+    el.addEventListener('pointerdown', function onTap(e) {
+      e.preventDefault();
+      popFaller(data);
+    }, { passive: false });
+  }
+
+  function popFaller(data) {
+    if (data.popped || !running) return;
+    data.popped = true;
+    score++;
+    scoreNum.textContent = score;
+    scoreNum.parentElement.style.transform = 'scale(1.25)';
+    setTimeout(() => { scoreNum.parentElement.style.transform = 'scale(1)'; }, 140);
+
+    const rect = data.el.getBoundingClientRect();
+    const gameRect = game.getBoundingClientRect();
+    const cx = rect.left - gameRect.left + rect.width / 2;
+    const cy = rect.top - gameRect.top + rect.height / 2;
+
+    // plus one
+    const plus = document.createElement('div');
+    plus.className = 'plusOne';
+    plus.textContent = '+1';
+    plus.style.left = (cx - 10) + 'px';
+    plus.style.top = (cy - 20) + 'px';
+    game.appendChild(plus);
+    setTimeout(() => plus.remove(), 750);
+
+    // sparks
+    const colors = ['#FFD93D','#FF6FA5','#7ED957','#6EC6FF','#FF9F45'];
+    for (let i = 0; i < 8; i++) {
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      const sSize = rand(6, 12);
+      spark.style.width = sSize + 'px';
+      spark.style.height = sSize + 'px';
+      spark.style.background = c;
+      spark.style.left = (cx - sSize / 2) + 'px';
+      spark.style.top = (cy - sSize / 2) + 'px';
+      const angle = rand(0, Math.PI * 2);
+      const dist = rand(30, 70);
+      spark.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      spark.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+      game.appendChild(spark);
+      setTimeout(() => spark.remove(), 520);
+    }
+
+    data.el.classList.add('pop');
+    setTimeout(() => {
+      data.el.remove();
+      fallers = fallers.filter(f => f !== data);
+    }, 360);
+  }
+
+  function animate(ts) {
+    if (!running) return;
+    const gh = game.clientHeight;
+    fallers.forEach(data => {
+      if (data.popped) return;
+      const elapsed = (ts - data.born) / 1000;
+      const y = -80 + data.speed * elapsed;
+      const x = data.startX + Math.sin(elapsed * data.wobbleFreq * Math.PI) * data.wobble;
+      data.el.style.top = y + 'px';
+      data.el.style.left = x + 'px';
+      if (y > gh + 20) {
+        data.el.remove();
+        data.popped = true;
+      }
+    });
+    fallers = fallers.filter(f => !f.popped || f.el.isConnected);
+    rafId = requestAnimationFrame(animate);
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = GAME_LEN;
+    scoreNum.textContent = '0';
+    timerNum.textContent = GAME_LEN;
+    fallers.forEach(f => f.el.remove());
+    fallers = [];
+    running = true;
+    startScreen.classList.add('hidden');
+    endScreen.classList.add('hidden');
+
+    spawnTimer = setInterval(spawnFaller, 650);
+    spawnFaller();
+
+    countdownTimer = setInterval(() => {
+      timeLeft--;
+      timerNum.textContent = timeLeft;
+      timerNum.parentElement.style.transform = 'scale(1.15)';
+      setTimeout(() => { timerNum.parentElement.style.transform = 'scale(1)'; }, 120);
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    rafId = requestAnimationFrame(animate);
+  }
+
+  function endGame() {
+    running = false;
+    clearInterval(spawnTimer);
+    clearInterval(countdownTimer);
+    cancelAnimationFrame(rafId);
+    fallers.forEach(f => f.el.remove());
+    fallers = [];
+
+    finalScore.textContent = score;
+
+    let stars = 1;
+    if (score >= 25) stars = 3;
+    else if (score >= 12) stars = 2;
+    else stars = 1;
+
+    const starEls = [document.getElementById('s1'), document.getElementById('s2'), document.getElementById('s3')];
+    starEls.forEach((s, i) => {
+      s.classList.remove('lit');
+      if (i < stars) {
+        setTimeout(() => s.classList.add('lit'), 200 + i * 220);
+      }
+    });
+
+    const titles = ['Nice try! 🙂','Great job! 🎉','Super star! 🌟','Amazing!! 🏆'];
+    endTitle.textContent = titles[stars] || titles[1];
+
+    setTimeout(() => endScreen.classList.remove('hidden'), 150);
+  }
+
+  startBtn.addEventListener('click', startGame);
+  againBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>
