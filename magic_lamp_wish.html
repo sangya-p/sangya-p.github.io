@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magic Lamp Wishes</title>
+<style>
+:root{--bg1:#ffe45e;--bg2:#ff7eb6;--ink:#3b1a6e;--card:#ffffffcc;--btn:#7c3aed;--btnink:#fff;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#5b2bd6;--bg2:#c2189a;--ink:#fff6c8;--card:#2a0f5acc;--btn:#ffe45e;--btnink:#3b1a6e}}
+:root[data-theme="dark"]{--bg1:#5b2bd6;--bg2:#c2189a;--ink:#fff6c8;--card:#2a0f5acc;--btn:#ffe45e;--btnink:#3b1a6e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;margin:0}
+body{background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--ink);font-family:"Comic Sans MS","Chalkboard SE","Trebuchet MS",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;overflow:hidden;text-align:center}
+h1{font-size:2rem;margin:10px 8px 0;line-height:1.1}
+#stars{font-size:1.6rem;margin-top:2px}
+#caption{font-size:1.5rem;font-weight:bold;min-height:3.6em;margin:4px 14px;padding:8px 14px;background:var(--card);border-radius:20px;display:flex;align-items:center;justify-content:center;max-width:94%}
+#lamp{font-size:100px;line-height:1;background:none;border:0;padding:0;cursor:pointer;animation:wob 2.2s ease-in-out infinite;filter:drop-shadow(0 6px 10px #0004)}
+#lamp:active{transform:scale(.85)}
+#lamp.off{animation:none;opacity:.6}
+#hint{font-size:1.3rem;font-weight:bold}
+#stage{flex:1;width:100%;position:relative;overflow:hidden}
+#papa{position:absolute;left:50%;bottom:10px;font-size:100px;line-height:1;transform:translateX(-50%);display:none;z-index:1}
+#papa.pop{display:block;animation:pop .5s cubic-bezier(.3,1.6,.6,1)}
+#papa.rocket{animation:rocket 1.3s ease-in forwards}
+.jam{position:absolute;border-radius:50%;z-index:2;background:radial-gradient(circle at 30% 30%,#e8964a,#8b3a0f 60%,#4a1a05);box-shadow:inset -3px -4px 6px #0006,0 2px 4px #0005;transform:translate(-50%,0);animation:fall .7s ease-in both}
+.jam.shake{animation:jshake .12s linear infinite}
+.jam.go{animation:scatter 1s ease-in forwards}
+#genie{position:absolute;left:50%;top:18%;font-size:130px;line-height:1;transform:translateX(-50%);display:none}
+#genie.show{display:block;animation:pop .5s cubic-bezier(.3,1.6,.6,1)}
+#genie.shake{display:block;animation:gshake .25s linear infinite}
+#genie.fade{display:block;animation:gfade 1.5s ease-out forwards}
+#bubble{position:absolute;left:50%;top:6%;transform:translateX(-50%);background:#fff;color:#3b1a6e;border:4px solid #3b1a6e;border-radius:30px;font-size:3rem;font-weight:bold;padding:0 22px;display:none;min-width:110px}
+#big{position:absolute;left:0;right:0;top:35%;font-size:3.2rem;font-weight:900;color:#fff;-webkit-text-stroke:2px #3b1a6e;text-shadow:0 4px 0 #3b1a6e;display:none;z-index:5;transform:rotate(-6deg)}
+#big.show{display:block;animation:bigpop 1.4s ease-out forwards}
+#again{display:none;margin:6px auto;font-size:1.6rem;font-weight:bold;font-family:inherit;padding:10px 26px;border-radius:30px;border:0;background:var(--btn);color:var(--btnink);position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:6}
+.spark{position:absolute;font-size:2rem;pointer-events:none;animation:spark .9s ease-out forwards;z-index:9}
+@keyframes wob{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg) scale(1.06)}}
+@keyframes pop{from{transform:translateX(-50%) scale(0)}to{transform:translateX(-50%) scale(1)}}
+@keyframes fall{from{transform:translate(-50%,var(--h))}to{transform:translate(-50%,0)}}
+@keyframes jshake{0%{transform:translate(-52%,0)}50%{transform:translate(-48%,-4px)}100%{transform:translate(-52%,0)}}
+@keyframes scatter{to{transform:translate(calc(-50% + var(--sx)),70vh) rotate(360deg);opacity:0}}
+@keyframes rocket{0%{transform:translateX(-50%) scale(1)}15%{transform:translateX(-50%) translateY(14px) scale(1.1,.9)}100%{transform:translateX(-50%) translateY(-130vh) rotate(8deg) scale(.6)}}
+@keyframes gshake{0%{transform:translateX(-50%) rotate(-8deg)}50%{transform:translateX(-50%) rotate(8deg) translateY(-6px)}100%{transform:translateX(-50%) rotate(-8deg)}}
+@keyframes gfade{from{opacity:1;transform:translateX(-50%) scale(1)}to{opacity:0;transform:translateX(-50%) scale(.2) rotate(360deg)}}
+@keyframes bigpop{0%{transform:scale(.3) rotate(-6deg);opacity:0}20%{transform:scale(1.15) rotate(-6deg);opacity:1}100%{transform:scale(1) rotate(-6deg) translateY(-40px);opacity:0}}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+</style>
+</head>
+<body>
+<h1>🪔 Magic Lamp Wishes! 🪔</h1>
+<div id="stars">⭐⭐⭐</div>
+<button id="lamp" aria-label="Magic lamp">🪔</button>
+<div id="hint">Tap the lamp!</div>
+<div id="caption">Rub the lamp to get 3 wishes!</div>
+<div id="stage">
+  <div id="papa">🧔</div>
+  <div id="genie">🧞</div>
+  <div id="bubble"></div>
+  <div id="big">WHOOOSH!</div>
+  <button id="again">Play again 🔁</button>
+</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+var ac=null,step=0,busy=false,timers=[];
+var lamp=$('lamp'),stage=$('stage'),papa=$('papa'),genie=$('genie'),bubble=$('bubble'),big=$('big'),cap=$('caption'),hint=$('hint'),stars=$('stars'),again=$('again');
+
+function later(fn,ms){timers.push(setTimeout(fn,ms))}
+function audio(){
+  if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(ac&&ac.state==='suspended')ac.resume();
+}
+function tone(f1,f2,dur,type,vol,delay){
+  if(!ac)return;
+  var t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();
+  o.type=type||'sine';
+  o.frequency.setValueAtTime(f1,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(f2,1),t+dur);
+  g.gain.setValueAtTime(vol||.2,t);
+  g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g);g.connect(ac.destination);
+  o.start(t);o.stop(t+dur+.05);
+}
+function noise(dur,f1,f2,vol){
+  if(!ac)return;
+  var n=Math.floor(ac.sampleRate*dur),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
+  for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+  var s=ac.createBufferSource();s.buffer=b;
+  var f=ac.createBiquadFilter();f.type='bandpass';f.Q.value=3;
+  var t=ac.currentTime;
+  f.frequency.setValueAtTime(f1,t);f.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  var g=ac.createGain();g.gain.setValueAtTime(vol||.4,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  s.connect(f);f.connect(g);g.connect(ac.destination);s.start();
+}
+function sparkle(){[660,880,1100,1320,1760].forEach(function(f,i){tone(f,f*1.02,.15,'triangle',.15,i*.07)})}
+function plop(){tone(500+Math.random()*300,150,.09,'sine',.18)}
+function boing(){tone(200,700,.35,'sine',.25);tone(700,250,.3,'sine',.2,.3)}
+function wahwah(){tone(400,300,.35,'sawtooth',.12);tone(330,220,.35,'sawtooth',.12,.4);tone(260,120,.9,'sawtooth',.12,.8)}
+function rumble(){tone(70,50,1,'sawtooth',.2)}
+
+function spark(e){
+  var r=stage.parentNode.getBoundingClientRect(),lr=lamp.getBoundingClientRect();
+  for(var i=0;i<6;i++){
+    var s=document.createElement('div');s.className='spark';s.textContent=['✨','⭐','💫'][i%3];
+    s.style.left=(lr.left+lr.width/2-16)+'px';s.style.top=(lr.top+10)+'px';
+    s.style.setProperty('--dx',((Math.random()-.5)*160)+'px');
+    s.style.setProperty('--dy',(Math.random()*-90-20)+'px');
+    document.body.appendChild(s);
+    (function(x){setTimeout(function(){x.remove()},900)})(s);
+  }
+}
+function setCap(t){cap.textContent=t}
+function setStars(){stars.textContent='⭐⭐⭐'.slice(0,Math.max(0,3-step)*1)||'💨'}
+
+function wish1(){
+  setCap('Wish #1: Gulab jamuns for Papa! 🤤');
+  hint.textContent='...';
+  papa.className='pop';boing();
+  var H=stage.clientHeight+120;
+  for(var i=0;i<60;i++){(function(i){
+    later(function(){
+      var j=document.createElement('div'),sz=34+Math.random()*16;
+      j.className='jam';
+      j.style.width=j.style.height=sz+'px';
+      j.style.left='calc(50% + '+((Math.random()-.5)*140)+'px)';
+      j.style.bottom=(10+Math.random()*90)+'px';
+      j.style.setProperty('--h',(-H)+'px');
+      j.style.setProperty('--sx',((Math.random()-.5)*400)+'px');
+      stage.appendChild(j);plop();
+    },500+i*65);
+  })(i)}
+  later(function(){setCap('Uh oh... where is Papa?! 🍯😂');hint.textContent='Tap the lamp for Wish #2!';done()},5000);
+}
+function wish2(){
+  setCap('Wish #2: Papa goes to space! 🚀');
+  hint.textContent='...';
+  var js=stage.querySelectorAll('.jam');
+  js.forEach(function(j){j.classList.add('shake')});
+  rumble();
+  later(function(){
+    js.forEach(function(j){j.classList.remove('shake');j.classList.add('go')});
+    papa.className='rocket';
+    noise(1.3,200,3500,.5);tone(150,900,1.2,'square',.07);
+    big.className='show';
+  },900);
+  later(function(){
+    js.forEach(function(j){j.remove()});
+    papa.className='';big.className='';
+    setCap('Bye Papa! See you at dinner! 👋');
+    hint.textContent='Tap the lamp for Wish #3!';done();
+  },2500);
+}
+function wish3(){
+  setCap('Wish #3: The Genie says hi! 🧞');
+  hint.textContent='...';
+  genie.className='show';boing();
+  later(function(){genie.className='shake';tone(300,500,.2,'square',.1);tone(500,300,.2,'square',.1,.25);tone(300,500,.2,'square',.1,.5)},600);
+  later(function(){
+    bubble.style.display='block';bubble.textContent='.';tone(600,600,.12,'sine',.2)
+  },1300);
+  later(function(){bubble.textContent='..';tone(600,600,.12,'sine',.2)},1800);
+  later(function(){bubble.textContent='...';tone(600,600,.12,'sine',.2)},2300);
+  later(function(){genie.className='fade';wahwah();noise(1.2,2500,300,.25)},3200);
+  later(function(){
+    bubble.style.display='none';genie.className='';
+    setCap('The genie went to take a nap! 💤 The end!');
+    hint.textContent='🎉 Yay! 🎉';
+    lamp.classList.add('off');
+    again.style.display='block';
+    sparkle();
+  },4800);
+}
+function done(){busy=false}
+
+lamp.addEventListener('click',function(e){
+  audio();
+  if(busy||step>=3)return;
+  busy=true;spark(e);sparkle();step++;
+  stars.textContent=['⭐⭐⭐','⭐⭐','⭐','💨'][step];
+  [wish1,wish2,wish3][step-1]();
+});
+again.addEventListener('click',function(){
+  audio();
+  timers.forEach(clearTimeout);timers=[];
+  stage.querySelectorAll('.jam').forEach(function(j){j.remove()});
+  papa.className='';genie.className='';bubble.style.display='none';big.className='';
+  again.style.display='none';lamp.classList.remove('off');
+  step=0;busy=false;stars.textContent='⭐⭐⭐';
+  hint.textContent='Tap the lamp!';setCap('Rub the lamp to get 3 wishes!');
+  sparkle();
+});
+</script>
+</body>
+</html>
